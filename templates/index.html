@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Transcription</title>
+  </head>
+
+  <body>
+    <h1>Real-time Speech Transcription</h1>
+    <button id="startButton">Start Recording</button>
+    <button id="stopButton" disabled>Stop Recording</button>
+    <h2>Transcription:</h2>
+    <div id="transcription"></div>
+
+    <script>
+      let socket;
+      let mediaRecorder;
+
+      const startButton = document.getElementById("startButton");
+      const stopButton = document.getElementById("stopButton");
+      const transcriptionDiv = document.getElementById("transcription");
+
+      startButton.addEventListener("click", () => {
+        // Initialize WebSocket
+        socket = new WebSocket("ws://localhost:8000/ws");
+
+        socket.onopen = () => {
+          navigator.mediaDevices.getUserMedia({
+            audio: true
+          }).then((stream) => {
+            mediaRecorder = new MediaRecorder(stream, {
+              mimeType: 'audio/webm;codecs=opus',
+              bitsPerSecond: 16000
+            });
+            mediaRecorder.start(500); // Send audio chunks every 500ms
+
+            mediaRecorder.ondataavailable = (e) => {
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(e.data); // Send audio data chunk
+              }
+            };
+
+            mediaRecorder.onstop = () => {
+              socket.send(
+                "__done__"
+                ); // Signal the backend that the stream has ended
+            };
+
+            startButton.disabled = true;
+            stopButton.disabled = false;
+          });
+        };
+
+        socket.onmessage = (event) => {
+          // Append received transcription to the display
+          transcriptionDiv.innerHTML += `<p>${event.data}</p>`;
+        };
+
+        socket.onerror = (error) => {
+          console.error("WebSocket Error:", error);
+        };
+
+        socket.onclose = () => {
+          console.log("WebSocket closed");
+          startButton.disabled = false;
+          stopButton.disabled = true;
+        };
+      });
+
+      stopButton.addEventListener("click", () => {
+        mediaRecorder.stop();
+        socket.send(new Blob(["__done__"])); // Send as binary data (Blob)
+        startButton.disabled = false;
+        stopButton.disabled = true;
+      });
+
+    </script>
+  </body>
+
+</html>
