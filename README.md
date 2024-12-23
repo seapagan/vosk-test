@@ -15,6 +15,13 @@ You also need to download a suitable`vosk` model. The model should be extracted
 in it's own named folder in the root of the repository. You can get the models
 from the [vosk website](https://alphacephei.com/vosk/models).
 
+> [!NOTE]
+>
+> It should be possible to pass the resulting transcribed result through another
+> model like [recasepunc](https://github.com/benob/recasepunc) to end up with a
+> properly punctuated and cased string. This is something to look into adding
+> later.
+
 ## Files
 
 - `backend.py`: A FastAPI backend and Jinja template that uses the `vosk`
